@@ -2,6 +2,8 @@
   import { isLoading } from '@sveltia/i18n';
   import { resolve } from '$app/paths';
   import { AppShell, initLocales, setCodeHighlighterLoaders } from '#lib';
+  import { getInitialLocale } from './_components/l10n.js';
+  import LocaleTools from './_components/locale-tools.svelte';
   import NavSection from './_components/nav-section.svelte';
 
   // The default engine loader fetches the prebuilt chunk published with this package, which doesn’t
@@ -38,15 +40,17 @@
     /* eslint-enable prefer-const */
   } = $props();
 
-  $effect.pre(() => {
-    initLocales();
-  });
+  // Load the strings before anything is rendered, starting in the locale given in the URL or chosen
+  // last time, see the Localization page. In an effect, the components would be rendered first, and
+  // keep showing the message keys
+  initLocales({ initialLocale: getInitialLocale() });
 </script>
 
 {#if !isLoading()}
   <AppShell style="display: flex; flex-direction: column;">
     <header>
       <h1><a href={resolve('/')}>Sveltia UI</a></h1>
+      <LocaleTools />
     </header>
     <div role="none" class="wrapper">
       <nav class="sidebar">
@@ -59,6 +63,11 @@
               { key: 'colours', label: 'Colours' },
               { key: 'typography', label: 'Typography', disabled: true },
             ]}
+          />
+          <NavSection
+            title="Language"
+            category="basics"
+            pages={[{ key: 'localization', label: 'Localization' }]}
           />
         </section>
         <section>
@@ -196,7 +205,55 @@
 {/if}
 
 <style lang="scss">
+  // Reveals the strings only screen readers read out, with the “Show hidden strings” switch, so
+  // translators can see where they’re used. `data-show-hidden-strings` is `HIDDEN_STRINGS_ATTR` in
+  // `_components/l10n.js`
+  @mixin hidden-string-badge($color) {
+    display: inline-block;
+    margin-inline: 4px;
+    border-radius: 3px;
+    padding: 0 4px;
+    color: #000;
+    background-color: $color;
+    font: normal 11px/1.5 var(--sui-font-family-monospace, monospace);
+    letter-spacing: normal;
+    text-transform: none;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+
+  :global(:root[data-show-hidden-strings]) {
+    :global {
+      [aria-label]:not(input, textarea, select, img, svg)::after {
+        @include hidden-string-badge(#ffe066);
+
+        content: attr(aria-label);
+      }
+
+      [aria-roledescription]::before {
+        @include hidden-string-badge(#a5d8ff);
+
+        content: 'role: ' attr(aria-roledescription);
+      }
+
+      // The status of an alert, toast or infobar, read out before the message
+      .status-label {
+        @include hidden-string-badge(#b2f2bb);
+
+        position: static !important;
+        clip-path: none !important;
+        width: auto !important;
+        height: auto !important;
+      }
+    }
+  }
+
   header {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 32px;
+    align-items: center;
+    justify-content: space-between;
     flex: none;
     padding: 16px 32px;
     border-bottom: 1px solid var(--sui-secondary-border-color);
